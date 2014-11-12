@@ -126,7 +126,15 @@ public class SampleCard extends CardView implements View.OnClickListener, View.O
                 float yVelocity = VelocityTrackerCompat.getYVelocity(mVelocityTracker, pointerIndexMove);
 
                 if (Math.abs(yVelocity) > mTouchSlop) {
-                    mPositionY += (yDelta) * (1 + (0.21 * mCardPosition));
+                    mPositionY += (yDelta) * ((0.21 * mCardPosition));
+
+                    if (mCardPosition == 2) {
+                        ExpandableLayout parent = ((ExpandableLayout) view.getParent());
+                        ViewGroup.LayoutParams params = (ViewGroup.LayoutParams) parent.getLayoutParams();
+                        params.height = (int) mPositionY;
+                        parent.setLayoutParams(params);
+//                        parent.setScaleY(mPositionY/parent.getHeight());
+                    }
 
                     if (mPositionY > mOriginalY) {
                         view.setY(mPositionY);
