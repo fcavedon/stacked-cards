@@ -17,7 +17,7 @@ import android.widget.TextView;
  */
 public class SampleCard extends CardView implements View.OnClickListener, View.OnTouchListener {
 
-    private static final int PIXELS_PER_SECOND = 1000;
+    private static final int UNITS_PIXELS_PER_SECOND = 1000;
     private static final int UNDEFINED = -1;
 
     private int mActivePointerId = UNDEFINED;
@@ -27,13 +27,15 @@ public class SampleCard extends CardView implements View.OnClickListener, View.O
     private float mPositionY = 0;
     private float mLastTouchY = 0;
     private float mOriginalY = 0;
-    private float mContainerOriginalHeight = 0;
+    private int mContainerOriginalHeight = 0;
+    private int mMaxYPosition = 0;
 
     private VelocityTracker mVelocityTracker;
     private TextView mTextView;
 
     private SampleCard previous;
     private SampleCard next;
+    private ExpandableLayout mParent;
 
     public SampleCard(Context context) {
         this(context, null);
@@ -46,12 +48,10 @@ public class SampleCard extends CardView implements View.OnClickListener, View.O
         mTextView = (TextView) findViewById(R.id.card_text_view);
         setRadius(4.f);
 
-        ViewConfiguration vc = ViewConfiguration.get(context);
-        mTouchSlop = vc.getScaledTouchSlop();
+        mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
 
         setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 400));
         setOnTouchListener(this);
-
     }
 
     public SampleCard(MainActivity context, int position) {
@@ -84,7 +84,9 @@ public class SampleCard extends CardView implements View.OnClickListener, View.O
         setTranslationY(-200 * mCardPosition);
 
         mOriginalY = getY();
-        mContainerOriginalHeight = ((ViewGroup) getParent()).getHeight();
+        mParent = ((ExpandableLayout) getParent());
+        mContainerOriginalHeight = mParent.getHeight();
+        mMaxYPosition = (int) (2 * (mOriginalY + (mOriginalY * 0.1)));
     }
 
     @Override
@@ -117,27 +119,30 @@ public class SampleCard extends CardView implements View.OnClickListener, View.O
             }
 
             case MotionEvent.ACTION_MOVE: {
-                final int pointerIndexMove = event.findPointerIndex(mActivePointerId);
+                int pointerIndexMove = event.findPointerIndex(mActivePointerId);
                 float yDelta = event.getY(pointerIndexMove) - mLastTouchY;
 
                 mVelocityTracker.addMovement(event);
-                mVelocityTracker.computeCurrentVelocity(PIXELS_PER_SECOND);
+                mVelocityTracker.computeCurrentVelocity(UNITS_PIXELS_PER_SECOND);
 
                 float yVelocity = VelocityTrackerCompat.getYVelocity(mVelocityTracker, pointerIndexMove);
 
                 if (Math.abs(yVelocity) > mTouchSlop) {
-                    mPositionY += (yDelta) * ((0.21 * mCardPosition));
+                    mPositionY += (yDelta) * ((0.2 * mCardPosition));
 
-                    if (mCardPosition == 2) {
-                        ExpandableLayout parent = ((ExpandableLayout) view.getParent());
-                        ViewGroup.LayoutParams params = (ViewGroup.LayoutParams) parent.getLayoutParams();
-                        params.height = (int) mPositionY;
-                        parent.setLayoutParams(params);
-//                        parent.setScaleY(mPositionY/parent.getHeight());
-                    }
+                    ViewGroup.LayoutParams params = mParent.getLayoutParams();
 
-                    if (mPositionY > mOriginalY) {
+                    if (mPositionY > mOriginalY && mPositionY < mMaxYPosition && mPositionY < mContainerOriginalHeight) {
                         view.setY(mPositionY);
+
+                        if (isLastView()) {
+                            if ((1 + mCardPosition) * mPositionY > (mContainerOriginalHeight / mCardPosition)) {
+                                params.height = (int) (mPositionY + (160 * (1 + mCardPosition)));
+                            } else {
+                                params.height = mContainerOriginalHeight;
+                            }
+                            mParent.setLayoutParams(params);
+                        }
                     }
                 }
 
@@ -160,5 +165,9 @@ public class SampleCard extends CardView implements View.OnClickListener, View.O
         }
         ((ViewGroup) getParent()).invalidate();
         return true;
+    }
+
+    private boolean isLastView() {
+        return (mCardPosition + 1) == mParent.getChildCount();
     }
 }
